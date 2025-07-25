@@ -1,0 +1,57 @@
+/**************************************Generate a kernel density map with a resolution of 1km**********************************************/
+var ISA_resolution = 1000;      //1kmISA
+var ISA = urban.reduceResolution({
+      reducer: ee.Reducer.mean(),
+      maxPixels: 20000,
+    }).reproject({
+    crs: 'EPSG:4326',  
+    scale:ISA_resolution    
+    });
+
+var KDE_image = ISA.convolve(gaussian_Kernel)
+                   .reproject({
+                   crs: 'EPSG:4326',  
+                   scale: 1000       
+                   }).unmask(0);
+var KDE_threshold = 0.2;  //Threshold: 0.2
+var KDE = KDE_image.updateMask(KDE_image.gt(KDE_threshold)); 
+
+/*****************************************Generate a CA result with a resolution of 30m**********************************************/
+var CA_radius = 5 ;
+var CA_threshold = 0.2; 
+var kernel = ee.Kernel.square(CA_radius, 'pixels', false); // 11*11 window
+var iterations = 3;  //iterations
+var projection = urban.projection();
+function apply_CA(image, kernel, iterations) {
+  var result = image;
+  for (var i = 1; i <= iterations; i++) {
+    result = result.reduceNeighborhood({
+    reducer: ee.Reducer.mean(), 
+    kernel: kernel,
+    inputWeight: 'kernel' 
+    })
+    // .gt(0.2)
+    .reproject({
+    crs: projection.crs(),
+    scale: projection.nominalScale()
+    });
+  }
+  
+  return result;
+}
+/****************************************The kernel density map is superimposed with the CA result to generate the initial urban boundary***********************************/
+var CA_image = apply_CA(urban,kernel,iterations);
+Map.addLayer(CA_image.gt(0.2), {min: 0, max: 1, palette: ['white', 'green']}, 'CA_image', false);Map.addLayer(CA_image.gt(0.2), {min: 0, max: 1, palette: ['white', 'green']}, 'CA_image', false)；
+
+var urban_r_image = CA_image.gt(0.2).or(KDE_image.gt(0.2));var urban_r_image = CA_image.gt(0.2).or(KDE_image.gt(0.2))；
+var urban_r = urban_r_image.updateMask(urban_r_image.eq(1));
+
+/*************************************************Dilation and erosion treatment*****************************************/
+var DE_radius = 7; //  7x7 window
+print('D_E radius :',DE_radius);
+var Dilation_Image = urban_r.unmask(0).focal_max(DE_radius, 'square');
+var Erosion_Image = Dilation_Image.focal_min(DE_radius, 'square');
+var result = Erosion_Image.updateMask(Erosion_Image.eq(1));
+
+
+
