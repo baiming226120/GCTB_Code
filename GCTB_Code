@@ -47,10 +47,10 @@ var urban_r_image = CA_image.gt(0.2).or(KDE_image.gt(0.2));var urban_r_image = C
 var urban_r = urban_r_image.updateMask(urban_r_image.eq(1));
 
 /*************************************************Dilation and erosion treatment*****************************************/
-var DE_radius = 7; //  7x7 window
+var DE_win = 7; //  7x7 window
 print('D_E radius :',DE_radius);
-var Dilation_Image = urban_r.unmask(0).focal_max(DE_radius, 'square');
-var Erosion_Image = Dilation_Image.focal_min(DE_radius, 'square');
+var Dilation_Image = urban_r.unmask(0).focal_max(DE_win/2-1, 'square');
+var Erosion_Image = Dilation_Image.focal_min(DE_win/2-1, 'square');
 var result = Erosion_Image.updateMask(Erosion_Image.eq(1));
 
 
